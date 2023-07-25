@@ -25,6 +25,7 @@ from peft import (  # noqa: E402
 )
 from transformers import AutoModelForCausalLM, AutoTokenizer, LlamaTokenizer, AutoModel  # noqa: F402
 
+HF_TOKEN = "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"
 
 def train(
         # model/data params
@@ -131,6 +132,7 @@ def train(
             torch_dtype=torch.float16,
             device_map=device_map,
             trust_remote_code=True,
+            use_auth_token=HF_TOKEN,
         )
     else:
         model = AutoModelForCausalLM.from_pretrained(
@@ -139,6 +141,7 @@ def train(
             torch_dtype=torch.float16,
             device_map={"": int(os.environ.get("LOCAL_RANK") or 0)},
             trust_remote_code=True,
+            use_auth_toekn=HF_TOKEN
         )
 
     if model.config.model_type == "llama":
