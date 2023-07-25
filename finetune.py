@@ -141,7 +141,7 @@ def train(
             torch_dtype=torch.float16,
             device_map={"": int(os.environ.get("LOCAL_RANK") or 0)},
             trust_remote_code=True,
-            use_auth_toekn=HF_TOKEN
+            use_auth_token=HF_TOKEN
         )
 
     if model.config.model_type == "llama":
