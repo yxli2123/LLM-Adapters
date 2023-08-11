@@ -251,6 +251,7 @@ def load_model(args) -> tuple:
                                  f"bit{args.num_bits}", f"iter{args.num_iter}", f"rank{args.reduced_rank}")
 
     model.load_state_dict(torch.load(os.path.join(args.ckpt_path, 'pytorch_model.bin')))
+    model = model.to('cuda:0')
 
     print(model)
     for n, p in model.named_parameters():
