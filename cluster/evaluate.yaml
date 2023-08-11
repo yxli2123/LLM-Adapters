@@ -43,7 +43,7 @@ jobs:
     container_args:
       cpus: 32
   command:
-    - python finetune_qlora.py --ckpt_path /mnt/t-qingru/exp_results/gsm8k/Llama-2-7b-hf/bit4/iter0/rank8/lr_0.0003/seed42/--num_bits 4 --num_iter 0 --reduced_rank 8 --base_model meta-llama/Llama-2-7b-hf --dataset gsm8k
-    - python finetune_qlora.py --ckpt_path /mnt/t-qingru/exp_results/gsm8k/Llama-2-7b-hf/bit4/iter0/rank16/lr_0.0003/seed42/--num_bits 4 --num_iter 0 --reduced_rank 16 --base_model meta-llama/Llama-2-7b-hf --dataset gsm8k
-    - python finetune_qlora.py --ckpt_path /mnt/t-qingru/exp_results/gsm8k/Llama-2-7b-hf/bit4/iter1/rank8/lr_0.0003/seed42/--num_bits 4 --num_iter 1 --reduced_rank 8 --base_model meta-llama/Llama-2-7b-hf --dataset gsm8k
-    - python finetune_qlora.py --ckpt_path /mnt/t-qingru/exp_results/gsm8k/Llama-2-7b-hf/bit4/iter1/rank16/lr_0.0003/seed42/--num_bits 4 --num_iter 1 --reduced_rank 16 --base_model meta-llama/Llama-2-7b-hf --dataset gsm8k
+    - python evaluate.py --ckpt_path /mnt/t-qingru/exp_results/gsm8k/Llama-2-7b-hf/bit4/iter0/rank8/lr_0.0003/seed42/--num_bits 4 --num_iter 0 --reduced_rank 8 --base_model meta-llama/Llama-2-7b-hf --dataset gsm8k
+    - python evaluate.py --ckpt_path /mnt/t-qingru/exp_results/gsm8k/Llama-2-7b-hf/bit4/iter0/rank16/lr_0.0003/seed42/--num_bits 4 --num_iter 0 --reduced_rank 16 --base_model meta-llama/Llama-2-7b-hf --dataset gsm8k
+    - python evaluate.py --ckpt_path /mnt/t-qingru/exp_results/gsm8k/Llama-2-7b-hf/bit4/iter1/rank8/lr_0.0003/seed42/--num_bits 4 --num_iter 1 --reduced_rank 8 --base_model meta-llama/Llama-2-7b-hf --dataset gsm8k
+    - python evaluate.py --ckpt_path /mnt/t-qingru/exp_results/gsm8k/Llama-2-7b-hf/bit4/iter1/rank16/lr_0.0003/seed42/--num_bits 4 --num_iter 1 --reduced_rank 16 --base_model meta-llama/Llama-2-7b-hf --dataset gsm8k
