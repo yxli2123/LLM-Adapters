@@ -256,7 +256,7 @@ def load_model(args) -> tuple:
     for n, p in model.named_parameters():
         print(n, p.size(), p.max().item(), p.min().item(), p.mean().item(), p.device)
 
-    tokenizer = AutoTokenizer.from_pretrained(args.base_model, use_auth_toekn=HF_TOKEN, trust_remote_code=True)
+    tokenizer = AutoTokenizer.from_pretrained(args.base_model, use_auth_token=HF_TOKEN, trust_remote_code=True)
     tokenizer.pad_token_id = (
         0  # unk. we want this to be different from the eos token
     )
