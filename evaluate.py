@@ -86,7 +86,6 @@ def main(
         print("Response:", evaluate(instruction))
         print()
     """
-    save_file = f'experiment/{args.model}-{args.adapter}-{args.dataset}.json'
     create_dir('experiment/')
 
     dataset = load_data(args)
@@ -126,8 +125,6 @@ def main(
         print('label:', label)
         print('---------------')
         print(f'\rtest:{idx + 1}/{total} | accuracy {correct}  {correct / (idx + 1)}')
-        with open(save_file, 'w+') as f:
-            json.dump(output_data, f, indent=4)
         pbar.update(1)
     pbar.close()
     print('\n')
