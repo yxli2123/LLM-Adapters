@@ -10,9 +10,9 @@ import fire
 import torch
 
 sys.path.append(os.path.join(os.getcwd(), "peft/src/"))
-from peft import PeftModel
 from tqdm import tqdm
-from transformers import GenerationConfig, LlamaForCausalLM, LlamaTokenizer, AutoModelForCausalLM, AutoTokenizer
+from transformers import GenerationConfig, AutoModelForCausalLM, AutoTokenizer, AutoConfig
+import utils
 
 if torch.cuda.is_available():
     device = "cuda"
@@ -25,6 +25,8 @@ try:
 except:  # noqa: E722
     pass
 
+
+HF_TOKEN = "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"
 
 def main(
         load_8bit: bool = False,
@@ -180,12 +182,37 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--dataset', choices=['AddSub', 'MultiArith', 'SingleEq', 'gsm8k', 'AQuA', 'SVAMP'],
                         required=True)
-    parser.add_argument('--model', choices=['LLaMA-7B', 'BLOOM-7B', 'GPT-j-6B'], required=True)
-    parser.add_argument('--adapter', choices=['LoRA', 'AdapterP', 'AdapterH', 'Parallel', 'Prefix'],
-                        required=True)
     parser.add_argument('--base_model', required=True)
-    parser.add_argument('--lora_weights', required=True)
-    parser.add_argument('--load_8bit', action='store_true', default=False)
+    parser.add_argument(
+        "--num_bits",
+        type=int,
+        default=2,
+        help="number of bits",
+    )
+    parser.add_argument(
+        "--num_iter",
+        type=int,
+        default=1,
+        help="0: 0+Gaussian initialization, else iteration numbers to decompose",
+    )
+    parser.add_argument(
+        "--reduced_rank",
+        type=int,
+        default=8,
+        help="reduced rank of lora",
+    )
+    parser.add_argument(
+        "--path_to_model_zoo",
+        type=str,
+        default="./",
+        help="root directory of model zoo",
+    )
+    parser.add_argument(
+        "--ckpt_path",
+        type=str,
+        default=None,
+        help="checkpoint path",
+    )
 
     return parser.parse_args()
 
@@ -199,65 +226,44 @@ def load_model(args) -> tuple:
     Returns:
         tuple(tokenizer, model)
     """
-    base_model = args.base_model
-    if not base_model:
-        raise ValueError(f'can not find base model name by the value: {args.model}')
-    lora_weights = args.lora_weights
-    if not lora_weights:
-        raise ValueError(f'can not find lora weight, the value is: {lora_weights}')
+      #####################################
+        #                                   #
+        #              Model                #
+        #                                   #
+        #####################################
+    config = AutoConfig.from_pretrained(args.base_model, use_auth_token=HF_TOKEN)
+    model = AutoModelForCausalLM.from_config(config)
 
-    load_8bit = args.load_8bit
-    if args.model == 'LLaMA-7B':
-        tokenizer = LlamaTokenizer.from_pretrained(base_model)
-    else:
-        tokenizer = AutoTokenizer.from_pretrained(base_model)
-    if device == "cuda":
-        model = AutoModelForCausalLM.from_pretrained(
-            base_model,
-            load_in_8bit=load_8bit,
-            torch_dtype=torch.float16,
-            device_map="auto",
-            trust_remote_code=True,
-        ) # fix zwq
-        model = PeftModel.from_pretrained(
-            model,
-            lora_weights,
-            torch_dtype=torch.float16,
-            device_map={"":0}
-        )
-    elif device == "mps":
-        model = AutoModelForCausalLM.from_pretrained(
-            base_model,
-            device_map={"": device},
-            torch_dtype=torch.float16,
-        )
-        model = PeftModel.from_pretrained(
-            model,
-            lora_weights,
-            device_map={"": device},
-            torch_dtype=torch.float16,
-        )
-    else:
-        model = AutoModelForCausalLM.from_pretrained(
-            base_model, device_map={"": device}, low_cpu_mem_usage=True
-        )
-        model = PeftModel.from_pretrained(
-            model,
-            lora_weights,
-            device_map={"": device},
-        )
+    # Quantize
+    allow_name = ['query_key_value', 'dense', 'dense_h_to_4h', 'dense_4h_to_h',
+                  'q_proj', 'v_proj', 'k_proj', 'o_proj', 'gate_proj', 'up_proj', 'down_proj',
+                  'fc1', 'fc2', 'out_proj']
+    block_name = ['pooler', 'classifier', 'LayerNorm', 'embeddings', 'embed']
+    utils.substitute_layer_weights_iter_quant(model,
+                                              allow_name=allow_name,
+                                              block_name=block_name,
+                                              reduced_rank=args.reduced_rank,
+                                              num_bits=args.num_bits,
+                                              num_iter=args.num_iter,
+                                              load=True,
+                                              enable_lora=True)
 
-        # unwind broken decapoda-research config
-        model.config.pad_token_id = tokenizer.pad_token_id = 0  # unk
-        model.config.bos_token_id = 1
-        model.config.eos_token_id = 2
+    torch.cuda.empty_cache()
+    if args.ckpt_path is None:
+        ckpt_path = os.path.join(args.path_to_model_zoo, args.base_model.split('/')[-1],
+                                 f"bit{args.num_bits}", f"iter{args.num_iter}", f"rank{args.reduced_rank}")
 
-        if not load_8bit:
-            model.half()  # seems to fix bugs for some users.
+    model.load_state_dict(torch.load(os.path.join(ckpt_path, 'pytorch_model.bin')))
 
-        model.eval()
-        if torch.__version__ >= "2" and sys.platform != "win32":
-            model = torch.compile(model)
+    print(model)
+    for n, p in model.named_parameters():
+        print(n, p.size(), p.max().item(), p.min().item(), p.mean().item(), p.device)
+
+    tokenizer = AutoTokenizer.from_pretrained(args.base_model, use_auth_toekn=HF_TOKEN, trust_remote_code=True)
+    tokenizer.pad_token_id = (
+        0  # unk. we want this to be different from the eos token
+    )
+    tokenizer.padding_side = "left"  # Allow batched inference
 
     return tokenizer, model
 
