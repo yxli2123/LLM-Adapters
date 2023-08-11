@@ -247,10 +247,10 @@ def load_model(args) -> tuple:
 
     torch.cuda.empty_cache()
     if args.ckpt_path is None:
-        ckpt_path = os.path.join(args.path_to_model_zoo, args.base_model.split('/')[-1],
+        args.ckpt_path = os.path.join(args.path_to_model_zoo, args.base_model.split('/')[-1],
                                  f"bit{args.num_bits}", f"iter{args.num_iter}", f"rank{args.reduced_rank}")
 
-    model.load_state_dict(torch.load(os.path.join(ckpt_path, 'pytorch_model.bin')))
+    model.load_state_dict(torch.load(os.path.join(args.ckpt_path, 'pytorch_model.bin')))
 
     print(model)
     for n, p in model.named_parameters():
